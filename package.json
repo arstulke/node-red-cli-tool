@@ -1,0 +1,16 @@
+{
+  "name": "node-red-cli",
+  "version": "0.0.1",
+  "description": "",
+  "scripts": {
+    "fetch": "node scripts/fetch.js",
+    "extract": "node scripts/extract.js",
+    "build": "node scripts/build.js",
+    "deploy": "node scripts/deploy.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "node-fetch": "^2.3.0"
+  }
+}
