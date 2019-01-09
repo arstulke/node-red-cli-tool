@@ -3,14 +3,12 @@
   "description": "",
   "version": "0.0.2",
   "author": "arstulke",
-  "scripts": {
-    "fetch": "node scripts/fetch.js",
-    "extract": "node scripts/extract.js",
-    "build": "node scripts/build.js",
-    "deploy": "node scripts/deploy.js"
-  },
+  "scripts": {},
   "license": "ISC",
   "dependencies": {
     "node-fetch": "^2.3.0"
+  },
+  "bin": {
+    "node-red-tool": "./bin/tool"
   }
 }

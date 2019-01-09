@@ -1,0 +1,4 @@
+#!/usr/bin/env node
+
+const tool = require('../src/tool');
+tool();

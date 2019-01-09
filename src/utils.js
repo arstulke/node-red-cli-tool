@@ -1,4 +1,5 @@
 const fs = require('fs');
+const path = require('path');
 const fetch = require('node-fetch');
 
 String.prototype.replaceAll = function (search, replacement) {
@@ -50,8 +51,7 @@ async function httpRequest(method, url, headers, body, noStringify) {
     return await fetch(url, options);
 }
 
-function getArgs() {
-    const args = process.argv.slice(2);
+function getArgs(args) {
     return {
         'project': args.length > 0 ? args[0] : undefined,
         'stage': args.length > 1 ? args[1] : undefined
@@ -69,8 +69,17 @@ function toUrlEncoded(element, key, list) {
     return list.join('&');
 }
 
+function resolvePath() {
+  const args = Array.from(arguments);
+  const pathOfExecution = process.env.PWD;
+  const arr = [pathOfExecution, ...args];
+  const resolvedPath = path.resolve(...arr);
+  return resolvedPath;
+}
+
 module.exports.readFileAsync = readFileAsync;
 module.exports.writeFileAsync = writeFileAsync;
 module.exports.httpRequest = httpRequest;
 module.exports.getArgs = getArgs;
 module.exports.toUrlEncoded = toUrlEncoded;
+module.exports.resolvePath = resolvePath;

@@ -1,5 +1,5 @@
-const { readFileAsync, httpRequest, getArgs } = require('./utils');
-const { loadConfigFile, getToken, revokeToken, getFlow, updateCredentialsFile } = require('./common');
+const { readFileAsync, httpRequest, getArgs } = require('../utils');
+const { loadConfigFile, getToken, revokeToken, getFlow, updateCredentialsFile } = require('../common');
 
 async function createFlow(stageConfig) {
     const headers = {
@@ -21,8 +21,8 @@ async function createFlow(stageConfig) {
 }
 
 
-async function run() {
-    const args = getArgs();
+async function run(args) {
+    args = getArgs(args);
     const configFile = await loadConfigFile(args.project);
     let stageConfig = configFile.stages[args.stage];
 
@@ -107,11 +107,9 @@ async function run() {
         'Node-RED-Deployment-Type': 'flows'
     };
     const newFlowsRes = await httpRequest('POST', stageConfig.url + '/flows', newFlowsHeaders, newFlows);
-    console.log(newFlowsRes.status);
     const newFlowsResBody = await newFlowsRes.json();
-    console.log(newFlowsResBody);
 
     stageConfig = await revokeToken(stageConfig);
 }
 
-run(); 
+module.exports = run;

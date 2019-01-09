@@ -1,9 +1,9 @@
-const { writeFileAsync, getArgs } = require('./utils');
-const { loadConfigFile, getToken, revokeToken, getFlow } = require('./common');
+const { writeFileAsync, getArgs } = require('../utils');
+const { loadConfigFile, getToken, revokeToken, getFlow } = require('../common');
 
 
-async function run() {
-    const args = getArgs();
+async function run(args) {
+    args = getArgs(args);
     const configFile = await loadConfigFile(args.project);
     let stageConfig = configFile.stages[args.stage];
 
@@ -23,4 +23,4 @@ async function run() {
     await writeFileAsync(configFile.flowFile, newFlowFileContent, 'utf8');
 }
 
-run(); 
+module.exports = run;
