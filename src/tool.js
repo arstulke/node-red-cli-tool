@@ -1,4 +1,4 @@
-const waitUntil = require('./waitUntil');
+const waitUntil = require('./utils/waitUntil');
 
 function isPromise(promise) {
   return promise && typeof promise.then === 'function';
