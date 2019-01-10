@@ -1,4 +1,5 @@
 const path = require('path');
+const os = require('os');
 
 const {
   readFileAsync,
@@ -12,13 +13,69 @@ const {
   toDirectory
 } = require('./utils');
 
+async function readCredentialsFile(subprojectDir) {
+  /*
+    reading credentials.json from...
+      ...config.json path (subproject)
+      ...current path (project)
+      ...user dir (user)
+      ...system (global)      NOT IMPLEMENTED
+  */
+
+  //find file location for global config
+  //const globalConfig = await readFileAsync(resolvePath('credentials.json'));
+
+  const userConfig = path.resolve(os.homedir(), '.node-red-cli-tool');
+  const projectConfig = resolvePath('credentials.json');
+  const subProjectConfig = resolvePath(subprojectDir, 'credentials.json');
+
+  let configFiles = [{
+    file: userConfig,
+    extractor: (file) => {
+      return file.credentials;
+    }
+  }, projectConfig, subProjectConfig];
+
+  configFiles = configFiles.map(async configFile => {
+    try {
+      if (typeof configFile === 'string') {
+        configFile = {
+          file: configFile
+        };
+      }
+
+      let file = await readFileAsync(configFile.file);
+      file = JSON.parse(file);
+
+      const extractor = configFile.extractor;
+      if (typeof extractor === 'function') {
+        file = extractor(file);
+      }
+
+      return file;
+    } catch (err) {
+      return undefined;
+    }
+  });
+  configFiles = await Promise.all(configFiles);
+  configFiles = configFiles.filter(file => file ? true : false);
+
+  const credentialsConfig = {};
+  configFiles.forEach((configFile) => {
+    Object.keys(configFile).forEach(stageConfig => {
+      credentialsConfig[stageConfig] = configFile[stageConfig];
+    });
+  });
+  return credentialsConfig;
+}
+
 
 async function detectSubProjects(depth) {
   let files = await listFilesRecursivly(resolvePath(), (filename, isDir) => {
     if ((filename.startsWith('.git') || filename.startsWith('tmp')) && isDir) {
       return false;
     }
-    return isDir || filename.endsWith('config.json');//dont use 'config.json' for config files
+    return isDir || filename.endsWith('config.json'); //TODO dont use 'config.json' for config files
   }, depth);
 
   files = files.map(async (file) => {
@@ -48,29 +105,19 @@ async function detectSubProjects(depth) {
 }
 
 async function loadConfigFile(_projectId, args, stageRequired) {
-  /*
-    TODO read credentials.json from...
-      ...config.json path (subproject)
-      ...current path (project)
-      ...user dir (user)
-      ...system (global)
-  */
-  const credentialsFilePromise = readFileAsync(resolvePath('credentials.json'));
-
   const subProjects = await detectSubProjects(args.maxDetectionDepth);
-
   const projectId = args.project;
   const flowConfigFile = subProjects[projectId];
   flowConfigFile.flowFile = resolvePath(flowConfigFile.directory, flowConfigFile.flowFile);
   flowConfigFile.projectId = projectId;
-
-  const credentialsFile = JSON.parse(await credentialsFilePromise);
 
   if (stageRequired && args.stage === undefined) {
     throw `Stage arg is for this script required but its value is '${args.stage}'.`;
   }
 
   if (stageRequired) {
+    const credentialsFile = await readCredentialsFile(flowConfigFile.directory);
+
     const stageKey = args.stage;
     const serverId = flowConfigFile.stages[stageKey];
     const secretServerConfig = credentialsFile[serverId];
