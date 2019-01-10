@@ -22,12 +22,12 @@ async function readCredentialsFile(subprojectDir) {
       ...system (global)      NOT IMPLEMENTED
   */
 
-  //find file location for global config
+  //TODO find file location for global config
   //const globalConfig = await readFileAsync(resolvePath('credentials.json'));
 
   const userConfig = path.resolve(os.homedir(), '.node-red-cli-tool');
-  const projectConfig = resolvePath('credentials.json');
-  const subProjectConfig = resolvePath(subprojectDir, 'credentials.json');
+  const projectConfig = resolvePath('node-red.credentials.json');
+  const subProjectConfig = resolvePath(subprojectDir, 'node-red.credentials.json');
 
   let configFiles = [{
     file: userConfig,
@@ -75,7 +75,7 @@ async function detectSubProjects(depth) {
     if ((filename.startsWith('.git') || filename.startsWith('tmp')) && isDir) {
       return false;
     }
-    return isDir || filename.endsWith('config.json'); //TODO dont use 'config.json' for config files
+    return isDir || filename.endsWith('node-red.config.json');
   }, depth);
 
   files = files.map(async (file) => {
