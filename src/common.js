@@ -26,12 +26,20 @@ async function loadConfigFile(projectId) {
   Object.keys(flowConfigFile.stages).forEach((stageKey) => {
     const serverId = flowConfigFile.stages[stageKey];
     const secretServerConfig = credentialsFile[serverId];
-    const secretProjectConfig = secretServerConfig.projects ? secretServerConfig.projects[projectId] : {};
+    const secretProjectConfig = secretServerConfig.projects && secretServerConfig.projects[projectId] !== undefined ? secretServerConfig.projects[projectId] : {};
 
-    const serverConfig = Object.assign({}, secretServerConfig, secretProjectConfig, {
+    const overwritable = {
+      flowTextId: flowConfigFile.flowTextId
+    };
+    const writeProtected = {
       id: stageKey,
       serverId: serverId
-    });
+    };
+    const serverConfig = Object.assign(
+      overwritable,
+      secretServerConfig,
+      secretProjectConfig,
+      writeProtected);
     flowConfigFile.stages[stageKey] = serverConfig;
   });
 
