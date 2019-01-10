@@ -7,7 +7,7 @@ const { loadConfigFile, getFunctionNode } = require('../common');
 
 async function run(args) {
     args = getArgs(args);
-    const configFile = await loadConfigFile(args.project);
+    const configFile = await loadConfigFile(args.project, args);
 
     const flowFileContent = JSON.parse(await readFileAsync(configFile.flowFile));
 

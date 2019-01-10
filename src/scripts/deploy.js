@@ -33,37 +33,36 @@ async function createFlow(stageConfig) {
 
 async function run(args) {
   args = getArgs(args);
-  const configFile = await loadConfigFile(args.project);
-  let stageConfig = configFile.stages[args.stage];
+  const configFile = await loadConfigFile(args.project, args, true);
 
   const flowFileContent = JSON.parse(await readFileAsync(configFile.flowFile));
 
-  stageConfig = await getToken(stageConfig);
+  Object.assign(configFile, await getToken(configFile));
 
   try {
-    await getFlow(stageConfig);
+    await getFlow(configFile);
   } catch (e) {
-    const newFlowId = await createFlow(stageConfig);
+    const newFlowId = await createFlow(configFile);
 
     console.warn(`` +
-      `The specified flow ${stageConfig.flowTextId} was not found on stage '${stageConfig.url}'.\n` +
+      `The specified flow ${configFile.flowTextId} was not found on stage '${configFile.url}'.\n` +
       `A new flow with the id '${newFlowId}' was created.\n\n` +
       `You may have to specify credentials in the flow nodes.`);
 
-    stageConfig.flowId = newFlowId;
+    configFile.flowId = newFlowId;
   }
 
-  flowFileContent.id = stageConfig.flowId;
+  flowFileContent.id = configFile.flowId;
   flowFileContent.nodes.forEach((node) => {
-    node.z = stageConfig.flowId;
+    node.z = configFile.flowId;
   });
 
   const headers = {
     'Content-Type': 'application/json',
-    'Authorization': 'Bearer ' + stageConfig.token,
+    'Authorization': 'Bearer ' + configFile.token,
     'Node-RED-API-Version': 'v2'
   };
-  const flowsRes = await httpRequest('GET', stageConfig.url + '/flows', headers);
+  const flowsRes = await httpRequest('GET', configFile.url + '/flows', headers);
   const flows = await flowsRes.json();
 
   const newFlows = {
@@ -72,10 +71,10 @@ async function run(args) {
   };
   flows.flows.forEach((remoteNode) => {
     if (remoteNode) {
-      if (remoteNode.id === stageConfig.flowId) {
+      if (remoteNode.id === configFile.flowId) {
         let info = flowFileContent.info;
-        if (!getFlowSearchRegex(stageConfig).test(info)) {
-          info = `sub-project-flow: "${stageConfig.flowTextId}"\n\n` + info;
+        if (!getFlowSearchRegex(configFile).test(info)) {
+          info = `sub-project-flow: "${configFile.flowTextId}"\n\n` + info;
         }
 
         Object.assign(remoteNode, {
@@ -95,7 +94,7 @@ async function run(args) {
         return;
       }
 
-      if (remoteNode.z === stageConfig.flowId) {
+      if (remoteNode.z === configFile.flowId) {
         return;
       }
     }
@@ -105,14 +104,14 @@ async function run(args) {
 
   const newFlowsHeaders = {
     'Content-Type': 'application/json',
-    'Authorization': 'Bearer ' + stageConfig.token,
+    'Authorization': 'Bearer ' + configFile.token,
     'Node-RED-API-Version': 'v2',
     'Node-RED-Deployment-Type': 'flows'
   };
-  const newFlowsRes = await httpRequest('POST', stageConfig.url + '/flows', newFlowsHeaders, newFlows);
+  const newFlowsRes = await httpRequest('POST', configFile.url + '/flows', newFlowsHeaders, newFlows);
   const newFlowsResBody = await newFlowsRes.json();
 
-  stageConfig = await revokeToken(stageConfig);
+  Object.assign(configFile, await revokeToken(configFile));
 }
 
 module.exports = run;

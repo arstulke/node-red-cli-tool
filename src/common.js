@@ -9,7 +9,10 @@ const {
 } = require('./utils');
 
 
-async function loadConfigFile(projectId) {
+async function loadConfigFile(_projectId, args, stageRequired) {
+  const projectId = args.project;
+
+  //TODO auto detect config.json files
   const projectFilePromise = readFileAsync(resolvePath('project.json'));
   const credentialsFilePromise = readFileAsync(resolvePath('credentials.json'));
 
@@ -23,25 +26,31 @@ async function loadConfigFile(projectId) {
   flowConfigFile.projectId = projectId;
 
   const credentialsFile = JSON.parse(await credentialsFilePromise);
-  Object.keys(flowConfigFile.stages).forEach((stageKey) => {
-    const serverId = flowConfigFile.stages[stageKey];
-    const secretServerConfig = credentialsFile[serverId];
-    const secretProjectConfig = secretServerConfig.projects && secretServerConfig.projects[projectId] !== undefined ? secretServerConfig.projects[projectId] : {};
 
-    const overwritable = {
-      flowTextId: flowConfigFile.flowTextId
-    };
+  if (stageRequired && args.stage === undefined) {
+    throw `Stage arg is for this script required but its value is '${args.stage}'.`;
+  }
+
+  if (stageRequired) {
+    const stageKey = args.stage;
+    const serverId = flowConfigFile.stages[stageKey];
+    const secretServerConfig = credentialsFile[serverId];//TODO store password base64 encrypted in memory, read base64 from credentials.json
+    const secretProjectConfig =
+      secretServerConfig.projects && secretServerConfig.projects[projectId] !== undefined ?
+      secretServerConfig.projects[projectId] : {};
+
+    secretServerConfig.projects = undefined;
+
     const writeProtected = {
-      id: stageKey,
+      stageId: stageKey,
       serverId: serverId
     };
-    const serverConfig = Object.assign(
-      overwritable,
+    Object.assign(
+      flowConfigFile,
       secretServerConfig,
       secretProjectConfig,
       writeProtected);
-    flowConfigFile.stages[stageKey] = serverConfig;
-  });
+  }
 
   return flowConfigFile;
 }
@@ -65,8 +74,13 @@ async function getToken(stageConfig) {
     const token = body.access_token;
 
     stageConfig.token = token;
+    return {
+      token
+    };
   }
-  return stageConfig;
+  return {
+    token: undefined
+  };
 }
 
 async function revokeToken(stageConfig) {
@@ -85,6 +99,9 @@ async function revokeToken(stageConfig) {
       throw `Revoke token didn't worked.`
     }
   }
+  return {
+    token: undefined
+  };
 }
 
 function getNode(flowFileContent, predicate) {
