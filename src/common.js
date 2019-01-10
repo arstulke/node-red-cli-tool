@@ -7,24 +7,61 @@ const {
   toUrlEncoded,
   resolvePath,
   base64Encode,
-  base64Decode
+  base64Decode,
+  listFilesRecursivly,
+  toDirectory
 } = require('./utils');
 
 
-async function loadConfigFile(_projectId, args, stageRequired) {
-  const projectId = args.project;
+async function detectSubProjects(depth) {
+  let files = await listFilesRecursivly(resolvePath(), (filename, isDir) => {
+    if ((filename.startsWith('.git') || filename.startsWith('tmp')) && isDir) {
+      return false;
+    }
+    return isDir || filename.endsWith('config.json');//dont use 'config.json' for config files
+  }, depth);
 
-  //TODO auto detect config.json files
-  const projectFilePromise = readFileAsync(resolvePath('project.json'));
+  files = files.map(async (file) => {
+    const filename = file;
+    file = resolvePath(file);
+    try {
+      file = await readFileAsync(file);
+      file = JSON.parse(file);
+
+      file.directory = toDirectory(filename);
+
+      return file;
+    } catch (err) {
+      return undefined;
+    }
+  });
+  files = await Promise.all(files);
+  files = files.filter(file => file ? typeof file.id == 'string' : false);
+
+  const subProjects = {};
+  files.forEach((file) => {
+    const subProjectId = file.id;
+    subProjects[subProjectId] = file;
+    delete file.id;
+  });
+  return subProjects;
+}
+
+async function loadConfigFile(_projectId, args, stageRequired) {
+  /*
+    TODO read credentials.json from...
+      ...config.json path (subproject)
+      ...current path (project)
+      ...user dir (user)
+      ...system (global)
+  */
   const credentialsFilePromise = readFileAsync(resolvePath('credentials.json'));
 
-  const projectFile = JSON.parse(await projectFilePromise);
-  const projectFlowConfig = projectFile[projectId];
-  const flowConfigFilePromise = readFileAsync(resolvePath(projectFlowConfig.directory, 'config.json'));
-  const flowConfigFile = JSON.parse(await flowConfigFilePromise);
+  const subProjects = await detectSubProjects(args.maxDetectionDepth);
 
-  flowConfigFile.directory = projectFlowConfig.directory;
-  flowConfigFile.flowFile = resolvePath(projectFlowConfig.directory, flowConfigFile.flowFile);
+  const projectId = args.project;
+  const flowConfigFile = subProjects[projectId];
+  flowConfigFile.flowFile = resolvePath(flowConfigFile.directory, flowConfigFile.flowFile);
   flowConfigFile.projectId = projectId;
 
   const credentialsFile = JSON.parse(await credentialsFilePromise);

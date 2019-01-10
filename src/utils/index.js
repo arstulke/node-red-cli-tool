@@ -7,6 +7,8 @@ const toUrlEncoded = require('./toUrlEncoded');
 const resolvePath = require('./resolvePath');
 const base64Encode = require('./base64Encode');
 const base64Decode = require('./base64Decode');
+const listFilesRecursivly = require('./listFilesRecursivly');
+const toDirectory = require('./toDirectory');
 
 const stringReplaceAll = require('./stringReplaceAll');
 
@@ -20,6 +22,8 @@ module.exports = {
   waitUntil,
   base64Encode,
   base64Decode,
+  listFilesRecursivly,
+  toDirectory,
 
   stringReplaceAll
 };
