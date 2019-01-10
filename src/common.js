@@ -39,39 +39,43 @@ async function loadConfigFile(projectId) {
 }
 
 async function getToken(stageConfig) {
-  const headers = {
-    "Content-Type": "application/x-www-form-urlencoded"
-  };
-  let data = {
-    'client_id': 'node-red-editor',
-    'grant_type': 'password',
-    'scope': '',
-    'username': stageConfig.username,
-    'password': stageConfig.password
-  };
-  data = toUrlEncoded(data);
+  if (stageConfig.username !== undefined && stageConfig.password !== undefined) {
+    const headers = {
+      "Content-Type": "application/x-www-form-urlencoded"
+    };
+    let data = {
+      'client_id': 'node-red-editor',
+      'grant_type': 'password',
+      'scope': '',
+      'username': stageConfig.username,
+      'password': stageConfig.password
+    };
+    data = toUrlEncoded(data);
 
-  const res = await httpRequest('POST', stageConfig.url + '/auth/token', headers, data);
-  const body = await res.json();
-  const token = body.access_token;
+    const res = await httpRequest('POST', stageConfig.url + '/auth/token', headers, data);
+    const body = await res.json();
+    const token = body.access_token;
 
-  stageConfig.token = token;
+    stageConfig.token = token;
+  }
   return stageConfig;
 }
 
 async function revokeToken(stageConfig) {
   const token = stageConfig.token;
 
-  const headers = {
-    "Authorization": "Bearer " + token,
-    "Content-Type": "application/json"
-  };
-  const data = {
-    token: token
-  };
-  const res = await httpRequest('POST', stageConfig.url + '/auth/revoke', Object.assign({}, headers), data);
-  if (res.status !== 200) {
-    throw `Revoke token didn't worked.`
+  if (token) {
+    const headers = {
+      "Authorization": "Bearer " + token,
+      "Content-Type": "application/json"
+    };
+    const data = {
+      token: token
+    };
+    const res = await httpRequest('POST', stageConfig.url + '/auth/revoke', Object.assign({}, headers), data);
+    if (res.status !== 200) {
+      throw `Revoke token didn't worked.`
+    }
   }
 }
 
@@ -96,30 +100,54 @@ function getFunctionNode(flowFileContent, functionId) {
   }
 }
 
+function getFlowSearchRegex(stageConfig) {
+  const regexAsString = `sub-?project-?id:\\s*("|')${stageConfig.flowTextId}("|')`
+  return new RegExp(regexAsString, "gi");
+}
+
+async function getFlowId(stageConfig) {
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer ' + stageConfig.token,
+    'Node-RED-API-Version': 'v2'
+  };
+  const flowsRes = await httpRequest('GET', stageConfig.url + '/flows', headers);
+  let flows = (await flowsRes.json()).flows;
+
+  const regex = getFlowSearchRegex(stageConfig);
+  flows = flows.filter((node) => {
+    return node.type && node.type === 'tab' && node.info && regex.test(node.info);
+  });
+
+  if (flows.length === 0) {
+    throw `No flow with infoId '${stageConfig.flowTextId}' found.`;
+  } else if (flows.length > 1) {
+    throw `Multiple flows with infoId '${stageConfig.flowTextId}' found.`;
+  }
+
+  const flowId = flows[0].id;
+  stageConfig.flowId = flowId;
+  return flowId;
+}
+
 async function getFlow(stageConfig) {
+  const flowId = await getFlowId(stageConfig);
   const headers = {
     'Authorization': 'Bearer ' + stageConfig.token
   };
-  const res = await httpRequest('GET', stageConfig.url + '/flow/' + stageConfig.flowId, headers, null);
+  const res = await httpRequest('GET', stageConfig.url + '/flow/' + flowId, headers, null);
   if (res.status === 404) {
-    throw `Flow with id ${stageConfig.flowId} not found.`;
+    throw `Flow with id ${flowId} not found.`;
   }
   return await res.json();
 }
 
-async function updateCredentialsFile(modificationCallback) {
-  const credentialsFilePath = resolvePath('credentials.json');
-  let credentialsFile = JSON.parse(await readFileAsync(credentialsFilePath));
-  modificationCallback(credentialsFile);
-  credentialsFile = JSON.stringify(credentialsFile, null, 4);
-  await writeFileAsync(credentialsFilePath, credentialsFile, 'utf8');
-}
-
 module.exports.loadConfigFile = loadConfigFile;
-module.exports.updateCredentialsFile = updateCredentialsFile;
 module.exports.getToken = getToken;
 module.exports.revokeToken = revokeToken;
 
 module.exports.getNode = getNode;
 module.exports.getFunctionNode = getFunctionNode;
+module.exports.getFlowSearchRegex = getFlowSearchRegex;
+module.exports.getFlowId = getFlowId;
 module.exports.getFlow = getFlow;
