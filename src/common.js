@@ -5,7 +5,9 @@ const {
   writeFileAsync,
   httpRequest,
   toUrlEncoded,
-  resolvePath
+  resolvePath,
+  base64Encode,
+  base64Decode
 } = require('./utils');
 
 
@@ -34,12 +36,12 @@ async function loadConfigFile(_projectId, args, stageRequired) {
   if (stageRequired) {
     const stageKey = args.stage;
     const serverId = flowConfigFile.stages[stageKey];
-    const secretServerConfig = credentialsFile[serverId];//TODO store password base64 encrypted in memory, read base64 from credentials.json
+    const secretServerConfig = credentialsFile[serverId];
     const secretProjectConfig =
       secretServerConfig.projects && secretServerConfig.projects[projectId] !== undefined ?
       secretServerConfig.projects[projectId] : {};
 
-    secretServerConfig.projects = undefined;
+    delete secretServerConfig.projects;
 
     const writeProtected = {
       stageId: stageKey,
@@ -50,6 +52,21 @@ async function loadConfigFile(_projectId, args, stageRequired) {
       secretServerConfig,
       secretProjectConfig,
       writeProtected);
+  }
+
+  if (flowConfigFile.password !== undefined) {
+    const supportedTypes = ['plain', 'base64'];
+    if (!flowConfigFile.passwordType) {
+      flowConfigFile.passwordType = 'plain';
+    } else if (!supportedTypes.includes(flowConfigFile.passwordType)) {
+      throw `Password type '${flowConfigFile.passwordType}' ` +
+        `is not one of the supported types: ${supportedTypes}.`;
+    }
+
+    if (flowConfigFile.passwordType === 'plain') {
+      flowConfigFile.password = base64Encode(flowConfigFile.password);
+      flowConfigFile.passwordType = 'base64';
+    }
   }
 
   return flowConfigFile;
@@ -65,7 +82,7 @@ async function getToken(stageConfig) {
       'grant_type': 'password',
       'scope': '',
       'username': stageConfig.username,
-      'password': stageConfig.password
+      'password': base64Decode(stageConfig.password)
     };
     data = toUrlEncoded(data);
 
