@@ -74,7 +74,7 @@ async function run(args) {
       if (remoteNode.id === configFile.flowId) {
         let info = flowFileContent.info;
         if (!getFlowSearchRegex(configFile).test(info)) {
-          info = `sub-project-flow: "${configFile.flowTextId}"\n\n` + info;
+          info = `sub-project-id: "${configFile.flowTextId}"` + (info ? '\n\n' + info : '');
         }
 
         Object.assign(remoteNode, {
