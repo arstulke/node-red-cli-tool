@@ -6,7 +6,7 @@
   "scripts": {},
   "license": "ISC",
   "dependencies": {
-    "node-fetch": "^2.3.0"
+    "node-fetch": "^2.6.0"
   },
   "bin": {
     "node-red-tool": "./bin/tool"
