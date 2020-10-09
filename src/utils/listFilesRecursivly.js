@@ -16,9 +16,13 @@ async function listFilesRecursivly(parentDir, checkCallback, depth) {
     }
   });
   files = await Promise.all(files);
-  files = files.flat(1);
+  files = flatArrayOnce(files);
 
   return files;
+}
+
+function flatArrayOnce(arr) {
+  return arr.reduce((acc, val) => acc.concat(val), []);
 }
 
 module.exports = async (parentDir, checkCallback, depth) => {
